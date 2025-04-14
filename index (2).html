@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Расписание дежурств</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .week-info { margin-bottom: 20px; }
+        .schedule { margin-bottom: 30px; }
+        .current-shift { padding: 15px; background: #f0f0f0; border-radius: 5px; }
+        .day-schedule { margin-bottom: 25px; }
+        .day-title { font-size: 1.2em; font-weight: bold; color: #2c3e50; }
+        .shift-list { list-style: none; padding-left: 20px; }
+        .shift-item { margin: 5px 0; }
+        #current-shift-list { font-weight: bold; color: #27ae60; }
+        .week-tabs { display: flex; margin-bottom: 20px; overflow-x: auto; }
+        .week-tab { padding: 10px 15px; cursor: pointer; border: 1px solid #ddd; margin-right: 5px; white-space: nowrap; }
+        .week-tab.active { background: #3498db; color: white; }
+        .week-content { display: none; }
+        .week-content.active { display: block; }
+        .empty-shift { color: #999; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="week-info">
+        <h2>Текущая неделя: <span id="current-week">III</span></h2>
+    </div>
+
+    <div class="week-tabs">
+        <div class="week-tab" data-week="1">Неделя I</div>
+        <div class="week-tab" data-week="2">Неделя II</div>
+        <div class="week-tab active" data-week="3">Неделя III</div>
+    </div>
+    
+    <div class="current-shift">
+        <h3>Сейчас на смене:</h3>
+        <div id="current-shift-list">Загрузка...</div>
+    </div>
+
+    <div class="schedule">
+        <h2>Общий план дежурств</h2>
+        <div id="week-1" class="week-content"></div>
+        <div id="week-2" class="week-content"></div>
+        <div id="week-3" class="week-content active"></div>
+    </div>
+
+    <script>
+        // Данные для отображения
+        const scheduleData = {
+            "week1": {
+                "Понедельник": [
+                    "Ewelina Mgłosiek: 11:00 – 15:00",
+                    "Magdalena Kenźiora: 8:00 – 20:00",
+                    "Agnieszka Sosnowska-Giez: 6:00 – 10:00",
+                    "Małgorzata Poziomek: 16:00 – 18:00",
+                    "Mariola Rejowska: 18:00 – 22:00",
+                    "Bogdan Rewiński: 18:00 – 22:00",
+                    "Łukasz Warelis: 6:00 – 8:00",
+                    "Magdalena Mazurek: 18:00 – 22:00",
+                    "Ryszard Wosik: 20:00 – 22:00 и 22:00 – 6:00"
+                ],
+                "Вторник": [
+                    "Ewelina Mgłosiek: 15:00 – 18:00",
+                    "Adam Tracz: 6:00 – 9:00",
+                    "Ryszard Wosik: 6:00 – 8:00",
+                    "Magdalena Kenźiora: 18:00 – 22:00",
+                    "Małgorzata Poziomek: 6:00 – 13:00",
+                    "Mariola Rejowska: 17:00 – 22:00",
+                    "Bogdan Rewiński: 20:00 – 22:00 и 22:00 – 6:00",
+                    "Łukasz Warelis: 10:00 – 11:00 и 13:00 – 20:00",
+                    "Agnieszka Sosnowska-Giez: 22:00 – 6:00"
+                ],
+                "Среда": [
+                    "Ewelina Mgłosiek: 12:00 – 15:00",
+                    "Adam Tracz: 6:00 – 9:00",
+                    "Ryszard Wosik: 8:00 – 20:00",
+                    "Magdalena Kenźiora: 20:00 – 22:00 и 22:00 – 6:00",
+                    "Agnieszka Sosnowska-Giez: 6:00 – 20:00",
+                    "Małgorzata Poziomek: 16:00 – 22:00",
+                    "Mariola Rejowska: 15:00 – 22:00",
+                    "Łukasz Warelis: 14:00 – 22:00"
+                ],
+                "Четверг": [
+                    "Ewelina Mgłosiek: 14:00 – 18:00",
+                    "Adam Tracz: 20:00 – 22:00 и 22:00 – 6:00",
+                    "Ryszard Wosik: 6:00 – 19:00",
+                    "Magdalena Mazurek: 16:00 – 22:00",
+                    "Magdalena Kenźiora: 8:00 – 20:00",
+                    "Agnieszka Sosnowska-Giez: 6:00 – 20:00",
+                    "Małgorzata Poziomek: 8:00 – 20:00",
+                    "Mariola Rejowska: 16:00 – 22:00",
+                    "Łukasz Warelis: 6:00 – 8:00"
+                ],
+                "Пятница": [
+                    "Adam Tracz: 19:00 – 22:00",
+                    "Ryszard Wosik: 6:00 – 8:00",
+                    "Magdalena Mazurek: 22:00 – 6:00",
+                    "Magdalena Kenźiora: 20:00 – 22:00",
+                    "Agnieszka Sosnowska-Giez: 13:00 – 15:00",
+                    "Małgorzata Poziomek: 8:00 – 20:00",
+                    "Mariola Rejowska: 17:00 – 22:00",
+                    "Bogdan Rewiński: 14:00 – 22:00",
+                    "Łukasz Warelis: 6:00 – 8:00"
+                ],
+                "Суббота": [
+                    "Ewelina Mgłosiek: 10:00 – 22:00",
+                    "Magdalena Kenźiora: 6:00 – 10:00",
+                    "Agnieszka Sosnowska-Giez: 22:00 – 6:00",
+                    "Mariola Rejowska: 10:00 – 22:00"
+                ],
+                "Воскресенье": [
+                    "Adam Tracz: 22:00 – 6:00",
+                    "Magdalena Mazurek: 14:00 – 22:00",
+                    "Agnieszka Sosnowska-Giez: 6:00 – 10:00",
+                    "Mariola Rejowska: 6:00 – 10:00"
+                ]
+            },
+            "week2": {
+                "Понедельник": [
+                    "Ewelina Mgłosiek: 11:00 – 15:00",
+                    "Magdalena Mazurek: 18:00 – 22:00",
+                    "Magdalena Kenźiora: 8:00 – 20:00",
+                    "Agnieszka Sosnowska-Giez: 8:00 – 20:00",
+                    "Małgorzata Poziomek: 6:00 – 8:00",
+                    "Mariola Rejowska: 16:00 – 22:00",
+                    "Bogdan Rewiński: 20:00 – 22:00 и 22:00 – 6:00",
+                    "Łukasz Warelis: 14:00 – 16:00"
+                ],
+                "Вторник": [
+                    "Ewelina Mgłosiek: 15:00 – 18:00",
+                    "Adam Tracz: 6:00 – 8:00",
+                    "Magdalena Kenźiora: 18:00 – 22:00",
+                    "Agnieszka Sosnowska-Giez: 20:00 – 22:00 и 22:00 – 6:00",
+                    "Małgorzata Poziomek: 8:00 – 20:00",
+                    "Mariola Rejowska: 16:00 – 22:00",
+                    "Bogdan Rewiński: 6:00 – 8:00",
+                    "Łukasz Warelis: 6:00 – 8:00"
+                ],
+                "Среда": [
+                    "Ewelina Mgłosiek: 12:00 – 15:00",
+                    "Ryszard Wosik: 18:00 – 22:00",
+                    "Magdalena Mazurek: 6:00 – 8:00",
+                    "Magdalena Kenźiora: 20:00 – 22:00 и 22:00 – 6:00",
+                    "Agnieszka Sosnowska-Giez: 6:00 – 20:00",
+                    "Małgorzata Poziomek: 16:00 – 22:00",
+                    "Mariola Rejowska: 20:00 – 22:00 и 22:00 – 6:00",
+                    "Łukasz Warelis: 8:00 – 20:00"
+                ],
+                "Четверг": [
+                    "Ewelina Mgłosiek: 14:00 – 18:00",
+                    "Adam Tracz: 14:00 – 22:00",
+                    "Ryszard Wosik: 12:00 – 14:00",
+                    "Magdalena Mazurek: 16:00 – 22:00",
+                    "Magdalena Kenźiora: 6:00 – 8:00",
+                    "Agnieszka Sosnowska-Giez: 6:00 – 8:00",
+                    "Małgorzata Poziomek: 20:00 – 22:00",
+                    "Mariola Rejowska: 6:00 – 8:00",
+                    "Bogdan Rewiński: 15:00 – 18:00",
+                    "Łukasz Warelis: 6:00 – 8:00"
+                ],
+                "Пятница": [
+                    "Ryszard Wosik: 8:00 – 20:00",
+                    "Magdalena Kenźiora: 16:00 – 22:00",
+                    "Agnieszka Sosnowska-Giez: 13:00 – 17:00",
+                    "Małgorzata Poziomek: 20:00 – 22:00",
+                    "Mariola Rejowska: 19:00 – 22:00",
+                    "Bogdan Rewiński: 8:00 – 20:00",
+                    "Łukasz Warelis: 6:00 – 8:00"
+                ],
+                "Суббота": [
+                    "Ewelina Mgłosiek: 6:00 – 10:00",
+                    "Adam Tracz: 6:00 – 10:00",
+                    "Ryszard Wosik: 22:00 – 6:00",
+                    "Magdalena Kenźiora: 14:00 – 22:00",
+                    "Mariola Rejowska: 10:00 – 22:00",
+                    "Łukasz Warelis: 10:00 – 22:00"
+                ],
+                "Воскресенье": [
+                    "Ewelina Mgłosiek: 14:00 – 22:00",
+                    "Ryszard Wosik: 6:00 – 10:00",
+                    "Magdalena Mazurek: 10:00 – 22:00",
+                    "Magdalena Kenźiora: 10:00 – 22:00",
+                    "Małgorzata Poziomek: 22:00 – 6:00",
+                    "Mariola Rejowska: 16:00 – 22:00"
+                ]
+            },
+            "week3": {
+                "Понедельник": [
+                    "Ewelina Mgłosiek: 11:00 – 15:00",
+                    "Adam Tracz: 20:00 – 22:00, 22:00 – 6:00",
+                    "Ryszard Wosik: 6:00 – 8:00",
+                    "Magdalena Mazurek: 18:00 – 22:00",
+                    "Agnieszka Sosnowska-Giez: 16:00 – 22:00",
+                    "Małgorzata Poziomek: 6:00 – 8:00",
+                    "Mariola Rejowska: 14:00 – 16:00",
+                    "Bogdan Rewiński: 8:00 – 20:00"
+                ],
+                "Вторник": [
+                    "Ewelina Mgłosiek: 15:00 – 18:00",
+                    "Adam Tracz: 6:00 – 8:00",
+                    "Magdalena Mazurek: 20:00 – 22:00, 22:00 – 6:00",
+                    "Małgorzata Poziomek: 14:00 – 22:00",
+                    "Mariola Rejowska: 8:00 – 20:00",
+                    "Bogdan Rewiński: 18:00 – 22:00",
+                    "Łukasz Warelis: 6:00 – 8:00, 10:00 – 11:00"
+                ],
+                "Среда": [
+                    "Ewelina Mgłosiek: 12:00 – 15:00",
+                    "Adam Tracz: 6:00 – 8:00",
+                    "Ryszard Wosik: 15:00 – 22:00",
+                    "Magdalena Mazurek: 6:00 – 8:00",
+                    "Magdalena Kenźiora: 8:00 – 20:00",
+                    "Agnieszka Sosnowska-Giez: 20:00 – 22:00",
+                    "Mariola Rejowska: 18:00 – 22:00",
+                    "Łukasz Warelis: 19:00 – 22:00"
+                ],
+                "Четверг": [
+                    "Ewelina Mgłosiek: 14:00 – 18:00",
+                    "Adam Tracz: 8:00 – 20:00",
+                    "Ryszard Wosik: 19:00 – 22:00",
+                    "Magdalena Mazurek: 16:00 – 18:00",
+                    "Magdalena Kenźiora: 15:00 – 19:00",
+                    "Agnieszka Sosnowska-Giez: 6:00 – 8:00",
+                    "Małgorzata Poziomek: -",
+                    "Mariola Rejowska: 20:00 – 22:00, 22:00 – 6:00"
+                ],
+                "Пятница": [
+                    "Ewelina Mgłosiek: 18:00 – 22:00",
+                    "Magdalena Mazurek: 8:00 – 20:00",
+                    "Magdalena Kenźiora: 6:00 – 8:00",
+                    "Agnieszka Sosnowska-Giez: 13:00 – 17:00",
+                    "Małgorzata Poziomek: 22:00 – 6:00",
+                    "Mariola Rejowska: 6:00 – 8:00",
+                    "Bogdan Rewiński: 16:00 – 22:00",
+                    "Łukasz Warelis: 18:00 – 22:00"
+                ],
+                "Суббота": [
+                    "Ryszard Wosik: 16:00 – 22:00",
+                    "Magdalena Kenźiora: 22:00 – 6:00",
+                    "Agnieszka Sosnowska-Giez: 14:00 – 22:00",
+                    "Małgorzata Poziomek: 6:00 – 10:00",
+                    "Łukasz Warelis: 10:00 – 22:00"
+                ],
+                "Воскресенье": [
+                    "Ryszard Wosik: 10:00 – 22:00",
+                    "Magdalena Kenźiora: 6:00 – 10:00",
+                    "Agnieszka Sosnowska-Giez: -",
+                    "Małgorzata Poziomek: 14:00 – 22:00",
+                    "Bogdan Rewiński: 16:00 – 22:00",
+                    "Łukasz Warelis: 22:00 – 6:00"
+                ]
+            }
+        };
+
+        // Данные для вычислений
+        const shifts = {
+            "week1": [
+                // Понедельник
+                { day: "Понедельник", name: "Ewelina Mgłosiek", start: 660, end: 900 },
+                { day: "Понедельник", name: "Magdalena Kenźiora", start: 480, end: 1200 },
+                { day: "Понедельник", name: "Agnieszka Sosnowska-Giez", start: 360, end: 600 },
+                { day: "Понедельник", name: "Małgorzata Poziomek", start: 960, end: 1080 },
+                { day: "Понедельник", name: "Mariola Rejowska", start: 1080, end: 1320 },
+                { day: "Понедельник", name: "Bogdan Rewiński", start: 1080, end: 1320 },
+                { day: "Понедельник", name: "Łukasz Warelis", start: 360, end: 480 },
+                { day: "Понедельник", name: "Magdalena Mazurek", start: 1080, end: 1320 },
+                { day: "Понедельник", name: "Ryszard Wosik", start: 1200, end: 1320 },
+                { day: "Понедельник", name: "Ryszard Wosik", start: 1320, end: 360 },
+                
+                // Вторник
+                { day: "Вторник", name: "Ewelina Mgłosiek", start: 900, end: 1080 },
+                { day: "Вторник", name: "Adam Tracz", start: 360, end: 540 },
+                { day: "Вторник", name: "Ryszard Wosik", start: 360, end: 480 },
+                { day: "Вторник", name: "Magdalena Kenźiora", start: 1080, end: 1320 },
+                { day: "Вторник", name: "Małgorzata Poziomek", start: 360, end: 780 },
+                { day: "Вторник", name: "Mariola Rejowska", start: 1020, end: 1320 },
+                { day: "Вторник", name: "Bogdan Rewiński", start: 1200, end: 360 },
+                { day: "Вторник", name: "Łukasz Warelis", start: 600, end: 660 },
+                { day: "Вторник", name: "Łukasz Warelis", start: 780, end: 1200 },
+                { day: "Вторник", name: "Agnieszka Sosnowska-Giez", start: 1320, end: 360 },
+                
+                // Среда
+                { day: "Среда", name: "Ewelina Mgłosiek", start: 720, end: 900 },
+                { day: "Среда", name: "Adam Tracz", start: 360, end: 540 },
+                { day: "Среда", name: "Ryszard Wosik", start: 480, end: 1200 },
+                { day: "Среда", name: "Magdalena Kenźiora", start: 1200, end: 360 },
+                { day: "Среда", name: "Agnieszka Sosnowska-Giez", start: 360, end: 1200 },
+                { day: "Среда", name: "Małgorzata Poziomek", start: 960, end: 1320 },
+                { day: "Среда", name: "Mariola Rejowska", start: 900, end: 1320 },
+                { day: "Среда", name: "Łukasz Warelis", start: 840, end: 1320 },
+                
+                // Четверг
+                { day: "Четверг", name: "Ewelina Mgłosiek", start: 840, end: 1080 },
+                { day: "Четверг", name: "Adam Tracz", start: 1200, end: 360 },
+                { day: "Четверг", name: "Ryszard Wosik", start: 360, end: 1140 },
+                { day: "Четверг", name: "Magdalena Mazurek", start: 960, end: 1320 },
+                { day: "Четверг", name: "Magdalena Kenźiora", start: 480, end: 1200 },
+                { day: "Четверг", name: "Agnieszka Sosnowska-Giez", start: 360, end: 1200 },
+                { day: "Четверг", name: "Małgorzata Poziomek", start: 480, end: 1200 },
+                { day: "Четверг", name: "Mariola Rejowska", start: 960, end: 1320 },
+                { day: "Четверг", name: "Łukasz Warelis", start: 360, end: 480 },
+                
+                // Пятница
+                { day: "Пятница", name: "Adam Tracz", start: 1140, end: 1320 },
+                { day: "Пятница", name: "Ryszard Wosik", start: 360, end: 480 },
+                { day: "Пятница", name: "Magdalena Mazurek", start: 1320, end: 360 },
+                { day: "Пятница", name: "Magdalena Kenźiora", start: 1200, end: 1320 },
+                { day: "Пятница", name: "Agnieszka Sosnowska-Giez", start: 780, end: 900 },
+                { day: "Пятница", name: "Małgorzata Poziomek", start: 480, end: 1200 },
+                { day: "Пятница", name: "Mariola Rejowska", start: 1020, end: 1320 },
+                { day: "Пятница", name: "Bogdan Rewiński", start: 840, end: 1320 },
+                { day: "Пятница", name: "Łukasz Warelis", start: 360, end: 480 },
+                
+                // Суббота
+                { day: "Суббота", name: "Ewelina Mgłosiek", start: 600, end: 1320 },
+                { day: "Суббота", name: "Magdalena Kenźiora", start: 360, end: 600 },
+                { day: "Суббота", name: "Agnieszka Sosnowska-Giez", start: 1320, end: 360 },
+                { day: "Суббота", name: "Mariola Rejowska", start: 600, end: 1320 },
+                
+                // Воскресенье
+                { day: "Воскресенье", name: "Adam Tracz", start: 1320, end: 360 },
+                { day: "Воскресенье", name: "Magdalena Mazurek", start: 840, end: 1320 },
+                { day: "Воскресенье", name: "Agnieszka Sosnowska-Giez", start: 360, end: 600 },
+                { day: "Воскресенье", name: "Mariola Rejowska", start: 360, end: 600 }
+            ],
+            "week2": [
+                // Понедельник
+                { day: "Понедельник", name: "Ewelina Mgłosiek", start: 660, end: 900 },
+                { day: "Понедельник", name: "Magdalena Mazurek", start: 1080, end: 1320 },
+                { day: "Понедельник", name: "Magdalena Kenźiora", start: 480, end: 1200 },
+                { day: "Понедельник", name: "Agnieszka Sosnowska-Giez", start: 480, end: 1200 },
+                { day: "Понедельник", name: "Małgorzata Poziomek", start: 360, end: 480 },
+                { day: "Понедельник", name: "Mariola Rejowska", start: 960, end: 1320 },
+                { day: "Понедельник", name: "Bogdan Rewiński", start: 1200, end: 360 },
+                { day: "Понедельник", name: "Łukasz Warelis", start: 840, end: 960 },
+                
+                // Вторник
+                { day: "Вторник", name: "Ewelina Mgłosiek", start: 900, end: 1080 },
+                { day: "Вторник", name: "Adam Tracz", start: 360, end: 480 },
+                { day: "Вторник", name: "Magdalena Kenźiora", start: 1080, end: 1320 },
+                { day: "Вторник", name: "Agnieszka Sosnowska-Giez", start: 1200, end: 360 },
+                { day: "Вторник", name: "Małgorzata Poziomek", start: 480, end: 1200 },
+                { day: "Вторник", name: "Mariola Rejowska", start: 960, end: 1320 },
+                { day: "Вторник", name: "Bogdan Rewiński", start: 360, end: 480 },
+                { day: "Вторник", name: "Łukasz Warelis", start: 360, end: 480 },
+                
+                // Среда
+                { day: "Среда", name: "Ewelina Mgłosiek", start: 720, end: 900 },
+                { day: "Среда", name: "Ryszard Wosik", start: 1080, end: 1320 },
+                { day: "Среда", name: "Magdalena Mazurek", start: 360, end: 480 },
+                { day: "Среда", name: "Magdalena Kenźiora", start: 1200, end: 360 },
+                { day: "Среда", name: "Agnieszka Sosnowska-Giez", start: 360, end: 1200 },
+                { day: "Среда", name: "Małgorzata Poziomek", start: 960, end: 1320 },
+                { day: "Среда", name: "Mariola Rejowska", start: 1200, end: 360 },
+                { day: "Среда", name: "Łukasz Warelis", start: 480, end: 1200 },
+                
+                // Четверг
+                { day: "Четверг", name: "Ewelina Mgłosiek", start: 840, end: 1080 },
+                { day: "Четверг", name: "Adam Tracz", start: 840, end: 1320 },
+                { day: "Четверг", name: "Ryszard Wosik", start: 720, end: 840 },
+                { day: "Четверг", name: "Magdalena Mazurek", start: 960, end: 1320 },
+                { day: "Четверг", name: "Magdalena Kenźiora", start: 360, end: 480 },
+                { day: "Четверг", name: "Agnieszka Sosnowska-Giez", start: 360, end: 480 },
+                { day: "Четверг", name: "Małgorzata Poziomek", start: 1200, end: 1320 },
+                { day: "Четверг", name: "Mariola Rejowska", start: 360, end: 480 },
+                { day: "Четверг", name: "Bogdan Rewiński", start: 900, end: 1080 },
+                { day: "Четверг", name: "Łukasz Warelis", start: 360, end: 480 },
+                
+                // Пятница
+                { day: "Пятница", name: "Ryszard Wosik", start: 480, end: 1200 },
+                { day: "Пятница", name: "Magdalena Kenźiora", start: 960, end: 1320 },
+                { day: "Пятница", name: "Agnieszka Sosnowska-Giez", start: 780, end: 1020 },
+                { day: "Пятница", name: "Małgorzata Poziomek", start: 1200, end: 1320 },
+                { day: "Пятница", name: "Mariola Rejowska", start: 1140, end: 1320 },
+                { day: "Пятница", name: "Bogdan Rewiński", start: 480, end: 1200 },
+                { day: "Пятница", name: "Łukasz Warelis", start: 360, end: 480 },
+                
+                // Суббота
+                { day: "Суббота", name: "Ewelina Mgłosiek", start: 360, end: 600 },
+                { day: "Суббота", name: "Adam Tracz", start: 360, end: 600 },
+                { day: "Суббота", name: "Ryszard Wosik", start: 1320, end: 360 },
+                { day: "Суббота", name: "Magdalena Kenźiora", start: 840, end: 1320 },
+                { day: "Суббота", name: "Mariola Rejowska", start: 600, end: 1320 },
+                { day: "Суббота", name: "Łukasz Warelis", start: 600, end: 1320 },
+                
+                // Воскресенье
+                { day: "Воскресенье", name: "Ewelina Mgłosiek", start: 840, end: 1320 },
+                { day: "Воскресенье", name: "Ryszard Wosik", start: 360, end: 600 },
+                { day: "Воскресенье", name: "Magdalena Mazurek", start: 600, end: 1320 },
+                { day: "Воскресенье", name: "Magdalena Kenźiora", start: 600, end: 1320 },
+                { day: "Воскресенье", name: "Małgorzata Poziomek", start: 1320, end: 360 },
+                { day: "Воскресенье", name: "Mariola Rejowska", start: 960, end: 1320 }
+            ],
+            "week3": [
+                // Понедельник
+                { day: "Понедельник", name: "Ewelina Mgłosiek", start: 660, end: 900 },
+                { day: "Понедельник", name: "Adam Tracz", start: 1200, end: 360 },
+                { day: "Понедельник", name: "Ryszard Wosik", start: 360, end: 480 },
+                { day: "Понедельник", name: "Magdalena Mazurek", start: 1080, end: 1320 },
+                { day: "Понедельник", name: "Agnieszka Sosnowska-Giez", start: 960, end: 1320 },
+                { day: "Понедельник", name: "Małgorzata Poziomek", start: 360, end: 480 },
+                { day: "Понедельник", name: "Mariola Rejowska", start: 840, end: 960 },
+                { day: "Понедельник", name: "Bogdan Rewiński", start: 480, end: 1200 },
+                
+                // Вторник
+                { day: "Вторник", name: "Ewelina Mgłosiek", start: 900, end: 1080 },
+                { day: "Вторник", name: "Adam Tracz", start: 360, end: 480 },
+                { day: "Вторник", name: "Magdalena Mazurek", start: 1200, end: 360 },
+                { day: "Вторник", name: "Małgorzata Poziomek", start: 840, end: 1320 },
+                { day: "Вторник", name: "Mariola Rejowska", start: 480, end: 1200 },
+                { day: "Вторник", name: "Bogdan Rewiński", start: 1080, end: 1320 },
+                { day: "Вторник", name: "Łukasz Warelis", start: 360, end: 480 },
+                { day: "Вторник", name: "Łukasz Warelis", start: 600, end: 660 },
+                
+                // Среда
+                { day: "Среда", name: "Ewelina Mgłosiek", start: 720, end: 900 },
+                { day: "Среда", name: "Adam Tracz", start: 360, end: 480 },
+                { day: "Среда", name: "Ryszard Wosik", start: 900, end: 1320 },
+                { day: "Среда", name: "Magdalena Mazurek", start: 360, end: 480 },
+                { day: "Среда", name: "Magdalena Kenźiora", start: 480, end: 1200 },
+                { day: "Среда", name: "Agnieszka Sosnowska-Giez", start: 1200, end: 1320 },
+                { day: "Среда", name: "Mariola Rejowska", start: 1080, end: 1320 },
+                { day: "Среда", name: "Łukasz Warelis", start: 1140, end: 1320 },
+                
+                // Четверг
+                { day: "Четверг", name: "Ewelina Mgłosiek", start: 840, end: 1080 },
+                { day: "Четверг", name: "Adam Tracz", start: 480, end: 1200 },
+                { day: "Четверг", name: "Ryszard Wosik", start: 1140, end: 1320 },
+                { day: "Четверг", name: "Magdalena Mazurek", start: 960, end: 1080 },
+                { day: "Четверг", name: "Magdalena Kenźiora", start: 900, end: 1140 },
+                { day: "Четверг", name: "Agnieszka Sosnowska-Giez", start: 360, end: 480 },
+                { day: "Четверг", name: "Mariola Rejowska", start: 1200, end: 360 },
+                
+                // Пятница
+                { day: "Пятница", name: "Ewelina Mgłosiek", start: 1080, end: 1320 },
+                { day: "Пятница", name: "Magdalena Mazurek", start: 480, end: 1200 },
+                { day: "Пятница", name: "Magdalena Kenźiora", start: 360, end: 480 },
+                { day: "Пятница", name: "Agnieszka Sosnowska-Giez", start: 780, end: 1020 },
+                { day: "Пятница", name: "Małgorzata Poziomek", start: 1320, end: 360 },
+                { day: "Пятница", name: "Mariola Rejowska", start: 360, end: 480 },
+                { day: "Пятница", name: "Bogdan Rewiński", start: 960, end: 1320 },
+                { day: "Пятница", name: "Łukasz Warelis", start: 1080, end: 1320 },
+                
+                // Суббота
+                { day: "Суббота", name: "Ryszard Wosik", start: 960, end: 1320 },
+                { day: "Суббота", name: "Magdalena Kenźiora", start: 1320, end: 360 },
+                { day: "Суббота", name: "Agnieszka Sosnowska-Giez", start: 840, end: 1320 },
+                { day: "Суббота", name: "Małgorzata Poziomek", start: 360, end: 600 },
+                { day: "Суббота", name: "Łukasz Warelis", start: 600, end: 1320 },
+                
+                // Воскресенье
+                { day: "Воскресенье", name: "Ryszard Wosik", start: 600, end: 1320 },
+                { day: "Воскресенье", name: "Magdalena Kenźiora", start: 360, end: 600 },
+                { day: "Воскресенье", name: "Małgorzata Poziomek", start: 840, end: 1320 },
+                { day: "Воскресенье", name: "Bogdan Rewiński", start: 960, end: 1320 },
+                { day: "Воскресенье", name: "Łukasz Warelis", start: 1320, end: 360 }
+            ]
+        };
+        
+        let currentWeekNumber = 3;
+
+function updateCurrentShift() {
+            const now = new Date();
+            const daysOfWeek = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+            const currentDay = daysOfWeek[now.getDay()];
+            const currentTime = now.getHours() * 60 + now.getMinutes();
+            
+            const currentWeekKey = `week${currentWeekNumber}`;
+            const currentPeople = [];
+            
+            const prevDayIndex = (now.getDay() - 1 + 7) % 7;
+            const prevDay = daysOfWeek[prevDayIndex];
+            
+            [currentDay, prevDay].forEach(day => {
+                if (shifts[currentWeekKey]) {
+                    shifts[currentWeekKey].forEach(shift => {
+                        if(shift.day === day) {
+                            if(shift.start <= shift.end) {
+                                if(currentTime >= shift.start && currentTime <= shift.end) {
+                                    currentPeople.push(shift.name);
+                                }
+                            } else {
+                                if((day === currentDay && currentTime >= shift.start) ||
+                                   (day === prevDay && currentTime < shift.end)) {
+                                    currentPeople.push(shift.name);
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+            
+            const uniquePeople = [...new Set(currentPeople)];
+            const statusElement = document.getElementById('current-shift-list');
+            statusElement.textContent = uniquePeople.length > 0 
+                ? uniquePeople.join(', ') 
+                : 'Сейчас никого нет на смене';
+        }
+
+        // Модифицированный обработчик переключения недель
+        document.querySelectorAll('.week-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.week-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.week-content').forEach(c => c.classList.remove('active'));
+                
+                this.classList.add('active');
+                const weekNumber = this.dataset.week;
+                document.getElementById(`week-${weekNumber}`).classList.add('active');
+                
+                // Обновляем номер текущей недели и информацию
+                currentWeekNumber = parseInt(weekNumber);
+                document.getElementById('current-week').textContent = 
+                    weekNumber === '1' ? 'I' : weekNumber === '2' ? 'II' : 'III';
+                
+                // Обновляем список дежурных для выбранной недели
+                updateCurrentShift();
+            });
+        });
+
+        // Отображение расписания для всех недель
+        function renderSchedules() {
+            for (let week = 1; week <= 3; week++) {
+                const weekKey = `week${week}`;
+                const weekDiv = document.getElementById(`week-${week}`);
+                
+                if (scheduleData[weekKey]) {
+                    Object.entries(scheduleData[weekKey]).forEach(([day, dayShifts]) => {
+                        const daySection = document.createElement('div');
+                        daySection.className = 'day-schedule';
+                        
+                        let shiftsHtml = dayShifts.map(shift => {
+                            if (shift === "-" || shift.includes(": -")) {
+                                return `<li class="shift-item empty-shift">${shift.includes(":") ? shift : "Нет дежурств"}</li>`;
+                            }
+                            return `<li class="shift-item">${shift}</li>`;
+                        }).join('');
+                        
+                        daySection.innerHTML = `
+                            <div class="day-title">${day}</div>
+                            <ul class="shift-list">${shiftsHtml}</ul>
+                        `;
+                        weekDiv.appendChild(daySection);
+                    });
+                }
+            }
+        }
+
+        // Переключение между неделями
+        document.querySelectorAll('.week-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.week-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.week-content').forEach(c => c.classList.remove('active'));
+                
+                this.classList.add('active');
+                document.getElementById(`week-${this.dataset.week}`).classList.add('active');
+            });
+        });
+
+        // Инициализация
+        renderSchedules();
+    </script>
+</body>
+</html>
